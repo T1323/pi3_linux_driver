@@ -1,0 +1,1 @@
+cmd_/home/pi/projects/devone/devone.ko := ld -EL -r  -T ./scripts/module-common.lds --build-id  -o /home/pi/projects/devone/devone.ko /home/pi/projects/devone/devone.o /home/pi/projects/devone/devone.mod.o
