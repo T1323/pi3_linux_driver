@@ -30,12 +30,14 @@ __attribute__((section("__versions"))) = {
 	{ 0xaebc5af3, __VMLINUX_SYMBOL_STR(cdev_init) },
 	{ 0x7485e15e, __VMLINUX_SYMBOL_STR(unregister_chrdev_region) },
 	{ 0x29537c9e, __VMLINUX_SYMBOL_STR(alloc_chrdev_region) },
-	{ 0xfa2a45e, __VMLINUX_SYMBOL_STR(__memzero) },
-	{ 0x28cc25db, __VMLINUX_SYMBOL_STR(arm_copy_from_user) },
+	{ 0xd62c833f, __VMLINUX_SYMBOL_STR(schedule_timeout) },
 	{ 0x566df243, __VMLINUX_SYMBOL_STR(kmem_cache_alloc_trace) },
 	{ 0xfd3e178c, __VMLINUX_SYMBOL_STR(kmalloc_caches) },
 	{ 0x37a0cba, __VMLINUX_SYMBOL_STR(kfree) },
+	{ 0xf4fa543b, __VMLINUX_SYMBOL_STR(arm_copy_to_user) },
+	{ 0xfa2a45e, __VMLINUX_SYMBOL_STR(__memzero) },
 	{ 0x27e1a049, __VMLINUX_SYMBOL_STR(printk) },
+	{ 0x28cc25db, __VMLINUX_SYMBOL_STR(arm_copy_from_user) },
 	{ 0x2e5810c6, __VMLINUX_SYMBOL_STR(__aeabi_unwind_cpp_pr1) },
 	{ 0x64f8b539, __VMLINUX_SYMBOL_STR(gpiod_set_raw_value) },
 	{ 0xcd387ee9, __VMLINUX_SYMBOL_STR(gpio_to_desc) },
@@ -49,4 +51,4 @@ __attribute__((section(".modinfo"))) =
 "depends=";
 
 
-MODULE_INFO(srcversion, "681167D5204BBADED6F761E");
+MODULE_INFO(srcversion, "D21DD7E0083EA948F8D89C8");

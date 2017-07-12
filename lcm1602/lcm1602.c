@@ -18,6 +18,7 @@
 
 #include <linux/gpio.h>
 #include <linux/io.h>
+#include <linux/ioctl.h>
 
 MODULE_LICENSE ("Dual BSD/GPL");
 
@@ -35,10 +36,15 @@ static struct class *lcm_class;
 #define PIN_D5	16
 #define PIN_D4  19
 
+#define LCM_IOC_TYPE 'D'
+#define LCM_W_MOD _IOW(LCM_IOC_TYPE, 1, uint8_t)
+#define LCM_R_MOD _IOR(LCM_IOC_TYPE, 2, uint8_t)
+
 static int lcm_open(struct inode *inode, struct file *filp);
 static int lcm_close(struct inode *inode, struct file *filp);
 static ssize_t lcm_write(struct file *filp, const char *buf, size_t len, loff_t *off);
 static loff_t lcm_lseek(struct file *filp, loff_t offset, int whence);
+static long lcm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 
 struct lcm_data {
 	char msg[1024];
@@ -53,6 +59,7 @@ struct file_operations lcm_ops = {
 	.release = lcm_close,
 	.write = lcm_write,
 	.llseek = lcm_lseek,
+	.unlocked_ioctl = lcm_ioctl,
 };
 
 static int lcm_init(void)
@@ -254,6 +261,7 @@ static int lcm_open(struct inode *inode, struct file *filp)
 {
 	struct lcm_data *p;
 	p = kmalloc(sizeof(struct lcm_data), GFP_KERNEL);
+	memset(p, 0, sizeof(struct lcm_data));
 	filp->private_data = p;
 	p->mode = 0;
 	p->length = 0;
@@ -324,7 +332,8 @@ static void displayMode0(struct file *filp)
 	struct lcm_data *p = filp->private_data;
 
 	printk(KERN_ALERT "display mode 0 %d\n", p->length);	
-	
+	set_current_state(TASK_INTERRUPTIBLE);
+		
 	if (p->length > 32) {
 		len = 32;
 	}
@@ -343,13 +352,81 @@ static void displayMode0(struct file *filp)
 	}	
 	
 	lcm_set_cmd(0x01);
-	mdelay(3);
-		
-	for (i=0; i<len; i++)
-	{
+
+	schedule_timeout(msecs_to_jiffies(2));
+	
+	for (i=0; i<len; i++) {
 		lcm_set_word_pos(p->msg[i], (offset + i) % 32);
-	}	
+	}
+	
+	p->mode = 0xFF;
 }
+
+static void displayMode1(struct file *filp)
+{
+	struct lcm_data *p = filp->private_data;
+	uint8_t len = p->length;
+	uint8_t i, j, count;
+
+	printk(KERN_ALERT "display mode 1 %d\n", len);
+	
+	//set_current_state(TASK_INTERRUPTIBLE);
+
+	for (i=0; i<=len; i++) {
+		lcm_set_cmd(0x01);
+		mdelay(3);
+		//schedule_timeout(msecs_to_jiffies(2));
+		count = 0;
+		for (j=i; j<len; j++) {
+			lcm_set_word_pos(p->msg[j], count);
+			if (++count > 15) {
+				break;
+			}
+		}
+		mdelay(500);
+		//schedule_timeout(msecs_to_jiffies(50));
+	}
+	p->mode = 0xFF;
+}
+
+static void displayMode2(struct file *filp)
+{
+	struct lcm_data *p = filp->private_data;
+	uint8_t len = p->length;
+	uint8_t i, j, loops, index, displayLen;
+	
+	printk(KERN_ALERT "display mode 2\n");
+	
+	//set_current_state(TASK_INTERRUPTIBLE);
+	
+	loops = len / 16;
+	if (len % 16) {
+		loops++;
+	}
+	
+	index = 0;
+	for (i=0; i<loops; i++) {
+		if (len - index >= 32) {
+			displayLen = 32;
+		}
+		else {
+			displayLen = len - index;
+		}
+		
+		lcm_set_cmd(0x01);
+		mdelay(3);
+		//schedule_timeout(msecs_to_jiffies(3));
+		
+		for (j=0; j<displayLen; j++) {
+			lcm_set_word_pos(p->msg[index + j], j);
+		}
+		index += 16;
+		mdelay(500);
+		//schedule_timeout(msecs_to_jiffies(1000));
+	}
+	p->mode = 0xFF;
+}
+
 
 static ssize_t lcm_write(struct file *filp, const char *buf, size_t len, loff_t *off)
 {
@@ -368,7 +445,11 @@ static ssize_t lcm_write(struct file *filp, const char *buf, size_t len, loff_t 
 		break;
 		
 		case 1:
-			//displayMode1(filp);
+			displayMode1(filp);
+		break;
+		
+		case 2:
+			displayMode2(filp);
 		break;
 		
 		default:
@@ -391,6 +472,53 @@ static loff_t lcm_lseek(struct file *filp, loff_t offset, int whence)
 	{
 		return -1;
 	}
+}
+
+static long lcm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	struct lcm_data *p = filp->private_data;
+	int retval = 0;
+	
+	switch (cmd) {
+		case LCM_W_MOD:
+			if (copy_from_user(&p->mode, (int __user *)arg, sizeof(uint8_t))) {
+				retval = -EFAULT;
+				goto done;
+			}
+			printk(KERN_ALERT "set display mode as %d\n", p->mode);
+			break;
+		
+		case LCM_R_MOD:
+			if (copy_to_user((int __user *)arg, &p->mode, sizeof(uint8_t))) {
+				retval = -EFAULT;
+				goto done;
+			}
+			printk(KERN_ALERT "read display mode %d\n", p->mode);
+			break;
+		
+		default:
+			retval = -EFAULT;
+			goto done;
+			break;
+	}
+	/*
+	if (p->msg[0] != 0) {
+		switch(p->mode) {
+			case 0:
+				displayMode0(filp);
+			break;
+			
+			case 1:
+				displayMode1(filp);
+			break;
+			
+			default:
+			break;
+		}
+	}
+*/
+done:
+	return retval;
 }
 
 module_init(lcm_init);
