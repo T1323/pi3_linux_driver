@@ -27,6 +27,12 @@ int main(int argc, char * argv[])
 	
 	fd = open(DEVFILE, O_RDWR);
 	
+	ioctl_cmd = CMD_DISPLAY_OFF;
+	ioctl(fd, LCM_W_MOD, &ioctl_cmd);
+	sleep(2);
+	ioctl_cmd = CMD_DISPLAY_ON;
+	ioctl(fd, LCM_W_MOD, &ioctl_cmd);
+	
 	sprintf(str, "ready");
 	write(fd, str, strlen(str));
 
@@ -43,6 +49,8 @@ int main(int argc, char * argv[])
 	write(fd, str, strlen(str));
 	
 	sleep(3);
+	ioctl_cmd = CMD_DISPLAY_OFF;
+	ioctl(fd, LCM_W_MOD, &ioctl_cmd);
 
 	close(fd);
 	
