@@ -1,0 +1,1 @@
+cmd_/home/pi/projects/drivers/lcm1602-2/lcm1602-2.ko := ld -EL -r  -T ./scripts/module-common.lds --build-id  -o /home/pi/projects/drivers/lcm1602-2/lcm1602-2.ko /home/pi/projects/drivers/lcm1602-2/lcm1602-2.o /home/pi/projects/drivers/lcm1602-2/lcm1602-2.mod.o
